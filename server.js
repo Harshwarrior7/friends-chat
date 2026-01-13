@@ -3,13 +3,23 @@ const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 
-app.use(express.static('public'));
+// ✅ Put this here, right after app is created
+app.use(express.static(__dirname + '/public'));
 
-io.on('connection', socket => {
-  socket.on('chat message', msg => {
-    io.emit('chat message', msg);
-  });
+// Your socket code
+io.on('connection', (socket) => {
+    console.log('A user connected');
+
+    socket.on('chat message', (msg) => {
+        io.emit('chat message', msg);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('A user disconnected');
+    });
 });
 
-const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => console.log('Server running'));
+// Start server
+http.listen(3000, () => {
+    console.log('Server running on http://localhost:3000');
+});

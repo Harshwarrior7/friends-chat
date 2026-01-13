@@ -4,18 +4,16 @@
   <meta charset="UTF-8">
   <title>Friends Chat 💬</title>
   <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@4.6.4/dist/index.min.js"></script>
   <style>
-    /* 1. Theme Variables */
     :root {
       --bg-color: #0b0d11;
       --header-bg: rgba(255, 255, 255, 0.05);
       --bubble-me: #0084ff;
       --bubble-them: #2f3136;
       --text-main: #ffffff;
-      --text-sub: #b9bbbe;
     }
 
-    /* 2. Global Styles */
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background-color: var(--bg-color);
@@ -42,7 +40,6 @@
       padding: 5px 10px; border-radius: 15px; outline: none;
     }
 
-    /* 3. Chat Area */
     #messages {
       flex: 1;
       overflow-y: auto;
@@ -52,8 +49,7 @@
       gap: 10px;
     }
 
-    /* Aligning messages Left/Right */
-    .msg-row { display: flex; width: 100%; }
+    .msg-row { display: flex; width: 100%; position: relative; }
     .msg-row.me { justify-content: flex-end; }
     .msg-row.them { justify-content: flex-start; }
 
@@ -66,20 +62,24 @@
       animation: pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
 
-    .me .bubble { 
-        background: var(--bubble-me); 
-        border-bottom-right-radius: 4px; 
-        color: white;
-    }
-    .them .bubble { 
-        background: var(--bubble-them); 
-        border-bottom-left-radius: 4px; 
-        color: white;
-    }
+    .me .bubble { background: var(--bubble-me); border-bottom-right-radius: 4px; }
+    .them .bubble { background: var(--bubble-them); border-bottom-left-radius: 4px; }
 
     .user-label { font-size: 0.7rem; font-weight: bold; margin-bottom: 3px; display: block; opacity: 0.8; }
 
-    /* 4. Input Area */
+    /* Message Options (Edit/Delete) */
+    .options-btn {
+      opacity: 0;
+      cursor: pointer;
+      font-size: 0.8rem;
+      margin: 0 10px;
+      align-self: center;
+      color: #888;
+      transition: opacity 0.2s;
+    }
+    .msg-row:hover .options-btn { opacity: 1; }
+
+    /* Input Area */
     .input-area {
       background: #1e1f23;
       padding: 20px;
@@ -96,16 +96,11 @@
     #username { width: 100px; border: 1px solid #444; }
     #message { flex: 1; }
 
-    .icon-btn {
-      background: none; border: none; font-size: 1.4rem;
-      cursor: pointer; transition: transform 0.2s;
-    }
-    .icon-btn:hover { transform: scale(1.2); }
+    .icon-btn { background: none; border: none; font-size: 1.4rem; cursor: pointer; }
 
     .send-btn {
-      background: var(--bubble-me); color: white;
-      border: none; width: 45px; height: 45px;
-      border-radius: 50%; cursor: pointer; font-weight: bold;
+      background: var(--bubble-me); color: white; border: none;
+      width: 45px; height: 45px; border-radius: 50%; cursor: pointer;
     }
 
     @keyframes pop {
@@ -121,14 +116,14 @@
   <select id="theme" onchange="applyTheme()">
     <option value="dark">Dark Mode</option>
     <option value="ocean">Ocean Blue</option>
-    <option value="sunset">Sunset Gradient</option>
+    <option value="sunset">Sunset Mixed</option>
   </select>
 </div>
 
 <div id="messages"></div>
 
 <div class="input-area">
-  <button class="icon-btn" onclick="insertEmoji('😊')">😊</button>
+  <button class="icon-btn" id="emoji-trigger">😊</button>
   <input id="username" placeholder="Name">
   <input id="message" placeholder="Message..." onkeypress="handleEnter(event)">
   <button class="send-btn" onclick="sendMessage()">➔</button>
@@ -136,6 +131,14 @@
 
 <script>
   const socket = io();
+  const picker = new EmojiButton({ theme: 'dark' });
+  const trigger = document.querySelector('#emoji-trigger');
+
+  // Initialize Emoji Picker
+  picker.on('emoji', selection => {
+    document.querySelector('#message').value += selection.emoji;
+  });
+  trigger.addEventListener('click', () => picker.togglePicker(trigger));
 
   function applyTheme() {
     const theme = document.getElementById('theme').value;
@@ -152,44 +155,59 @@
     }
   }
 
-  function insertEmoji(emoji) {
-    document.getElementById('message').value += emoji;
-    document.getElementById('message').focus();
-  }
-
   function handleEnter(e) { if (e.key === 'Enter') sendMessage(); }
 
   function sendMessage() {
     const u = document.getElementById("username").value;
     const m = document.getElementById("message").value;
     if (u && m) {
-      // Sending an OBJECT so we can tell who is who
       socket.emit("chat message", { user: u, text: m });
       document.getElementById("message").value = "";
     }
   }
 
+  // Handle Edit/Delete Actions
+  function openOptions(id, currentText, isMe) {
+    if(!isMe) return; // Only allow editing your own messages
+    const action = confirm("Edit message? (OK to Edit, Cancel to Delete)");
+    if(action) {
+      const newText = prompt("Edit your message:", currentText);
+      if(newText) socket.emit("edit message", { id, newText });
+    } else {
+      if(confirm("Delete this message?")) socket.emit("delete message", id);
+    }
+  }
+
   socket.on("chat message", function(data) {
     const container = document.getElementById("messages");
-    const currentUserName = document.getElementById("username").value;
-    
-    // Check if the message came from the current user
-    const isMe = data.user === currentUserName;
+    const isMe = data.user === document.getElementById("username").value;
     
     const row = document.createElement("div");
     row.className = `msg-row ${isMe ? 'me' : 'them'}`;
+    row.id = `msg-${data.id}`;
 
     row.innerHTML = `
+      ${isMe ? `<span class="options-btn" onclick="openOptions('${data.id}', '${data.text}', true)">⋮</span>` : ''}
       <div class="bubble">
         <span class="user-label">${isMe ? 'You' : data.user}</span>
         <div class="msg-text">${data.text}</div>
       </div>
+      ${!isMe ? `<span class="options-btn">⋮</span>` : ''}
     `;
 
     container.appendChild(row);
     container.scrollTop = container.scrollHeight;
   });
-</script>
 
+  socket.on("message edited", function(data) {
+    const el = document.querySelector(`#msg-${data.id} .msg-text`);
+    if(el) el.innerText = data.text + " (edited)";
+  });
+
+  socket.on("message deleted", function(id) {
+    const el = document.getElementById(`msg-${id}`);
+    if(el) el.remove();
+  });
+</script>
 </body>
 </html>

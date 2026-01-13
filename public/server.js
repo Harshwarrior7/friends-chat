@@ -4,66 +4,51 @@ const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 
-// Serve files from the current directory (index.html, etc.)
 app.use(express.static(__dirname));
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Temporary memory for messages (clears on server restart)
+// Memory storage
 let messages = [];
 
 io.on('connection', (socket) => {
-    console.log('A user connected');
+    // Notify everyone when someone joins
+    socket.broadcast.emit('user status', 'A friend joined the chat');
 
-    // 1. Sending Messages
     socket.on('chat message', (data) => {
         const msgObject = { 
-            id: Date.now() + Math.random().toString(36).substr(2, 9), 
+            id: Date.now() + Math.random().toString(36).substr(2, 5), 
             user: data.user, 
             text: data.text,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            replyTo: data.replyTo // Store reply info
         };
         messages.push(msgObject);
         io.emit('chat message', msgObject);
     });
 
-    // 2. Typing Indicator (Broadcast to others only)
-    socket.on('typing', (username) => {
-        socket.broadcast.emit('display typing', username);
-    });
+    socket.on('typing', (user) => socket.broadcast.emit('display typing', user));
+    socket.on('stop typing', () => socket.broadcast.emit('hide typing'));
 
-    socket.on('stop typing', () => {
-        socket.broadcast.emit('hide typing');
-    });
-
-    // 3. Message Editing
     socket.on('edit message', (data) => {
-        const msgIndex = messages.findIndex(m => m.id === data.id);
-        if (msgIndex !== -1) {
-            messages[msgIndex].text = data.newText;
-            messages[msgIndex].edited = true;
-            // Tell everyone to update this specific message ID
+        const msg = messages.find(m => m.id === data.id);
+        if (msg) {
+            msg.text = data.newText;
             io.emit('message edited', { id: data.id, text: data.newText });
         }
     });
 
-    // 4. Message Deletion
     socket.on('delete message', (id) => {
         messages = messages.filter(m => m.id !== id);
         io.emit('message deleted', id);
     });
 
     socket.on('disconnect', () => {
-        console.log('A user disconnected');
-        // Ensure typing indicator hides if someone leaves while typing
+        socket.broadcast.emit('user status', 'A friend left the chat');
         socket.broadcast.emit('hide typing');
     });
 });
 
-// Port handling for Render or Localhost
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+http.listen(PORT, () => console.log(`Server live on port ${PORT}`));

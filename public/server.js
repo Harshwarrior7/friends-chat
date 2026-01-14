@@ -13,8 +13,7 @@ app.get('/', (req, res) => {
 let messages = [];
 
 io.on('connection', (socket) => {
-    
-    // Triggered when a user clicks "Join Chat"
+    // When a user logs in
     socket.on('user joined', (username) => {
         socket.broadcast.emit('user status', `${username} joined the room`);
     });

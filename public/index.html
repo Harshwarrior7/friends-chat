@@ -22,35 +22,51 @@
       overflow: hidden;
     }
 
-    /* --- LOGIN SCREEN --- */
+    /* --- LOGIN SCREEN (Always shows first) --- */
     #login-screen {
-      position: fixed; inset: 0; z-index: 100;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
       background: var(--bg-color);
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      transition: opacity 0.5s ease, visibility 0.5s;
+      display: flex; /* Show by default */
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999; /* Higher than everything */
+      transition: opacity 0.4s ease;
     }
 
     .login-box {
-      background: #1e1f23; padding: 40px; border-radius: 15px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; width: 300px;
+      background: #1e1f23;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+      text-align: center;
+      width: 320px;
     }
 
-    .login-box h2 { margin-bottom: 20px; font-weight: 300; }
+    .login-box h2 { margin-bottom: 25px; font-weight: 600; font-size: 1.8rem; }
 
     .login-box input {
-      width: 100%; padding: 12px; margin-bottom: 20px;
-      border-radius: 8px; border: 1px solid #444; background: #2f3136;
-      color: white; outline: none; box-sizing: border-box;
+      width: 100%; padding: 14px; margin-bottom: 20px;
+      border-radius: 10px; border: 1px solid #444; background: #2f3136;
+      color: white; outline: none; box-sizing: border-box; font-size: 1rem;
     }
 
     .login-box button {
-      width: 100%; padding: 12px; border-radius: 8px; border: none;
-      background: var(--accent); color: white; cursor: pointer; font-weight: bold;
+      width: 100%; padding: 14px; border-radius: 10px; border: none;
+      background: var(--accent); color: white; cursor: pointer;
+      font-weight: bold; font-size: 1rem; transition: 0.2s;
     }
+    
+    .login-box button:hover { background: #4752c4; }
 
-    /* --- CHAT AREA (Hidden by default) --- */
+    /* --- CHAT AREA (Starts Hidden) --- */
     #chat-container {
-      display: none; flex-direction: column; height: 100vh; opacity: 0;
+      display: none; /* Changed via JS */
+      flex-direction: column;
+      height: 100vh;
+      opacity: 0;
       transition: opacity 0.5s ease;
     }
 
@@ -147,19 +163,23 @@
     const name = document.getElementById('username-input').value.trim();
     if (name) {
       currentUser = name;
-      document.getElementById('login-screen').style.opacity = '0';
+      const login = document.getElementById('login-screen');
+      const chat = document.getElementById('chat-container');
+      
+      // Fade out login
+      login.style.opacity = '0';
+      
       setTimeout(() => {
-        document.getElementById('login-screen').style.display = 'none';
-        const chat = document.getElementById('chat-container');
+        login.style.display = 'none';
         chat.style.display = 'flex';
-        setTimeout(() => chat.style.opacity = '1', 50);
+        // Fade in chat
+        setTimeout(() => {
+          chat.style.opacity = '1';
+        }, 50);
         
-        // Notify server
         socket.emit('user joined', currentUser);
-        
-        // Setup Emoji Picker AFTER login to ensure it finds the button
         initEmoji();
-      }, 500);
+      }, 400);
     } else {
       alert("Please enter a name to continue.");
     }

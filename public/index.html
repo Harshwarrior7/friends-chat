@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Friends Chat 💬</title>
   <script src="/socket.io/socket.io.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@4.6.4/dist/index.min.js"></script>
   <style>
     :root {
       --bg-color: #0b0d11;
@@ -31,13 +30,10 @@
     }
 
     #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-
-    /* System/Notification Messages */
     .sys-msg { text-align: center; font-size: 0.75rem; color: #888; margin: 5px 0; }
-
     #typing-monitor { padding: 0 25px 5px 25px; font-size: 0.8rem; font-style: italic; color: #888; height: 20px; }
 
-    .msg-row { display: flex; width: 100%; align-items: flex-end; }
+    .msg-row { display: flex; width: 100%; align-items: flex-end; margin-bottom: 5px; }
     .msg-row.me { justify-content: flex-end; }
     .msg-row.them { justify-content: flex-start; }
 
@@ -46,14 +42,13 @@
       box-shadow: 0 2px 5px rgba(0,0,0,0.2); animation: pop 0.25s ease;
     }
 
-    /* Reply Style */
     .reply-quote {
       background: rgba(0,0,0,0.2); border-left: 3px solid var(--accent);
       padding: 5px 8px; font-size: 0.75rem; border-radius: 5px; margin-bottom: 5px; opacity: 0.8;
     }
 
-    .me .bubble { background: var(--bubble-me); border-bottom-right-radius: 4px; }
-    .them .bubble { background: var(--bubble-them); border-bottom-left-radius: 4px; }
+    .me .bubble { background: var(--bubble-me); border-bottom-right-radius: 4px; color: white; }
+    .them .bubble { background: var(--bubble-them); border-bottom-left-radius: 4px; color: white; }
 
     .user-label { font-size: 0.7rem; font-weight: bold; margin-bottom: 3px; display: block; opacity: 0.7; }
 
@@ -62,7 +57,6 @@
     }
     .msg-row:hover .options-btn { opacity: 1; }
 
-    /* Reply Preview Bar */
     #reply-preview {
       display: none; background: #1e1f23; padding: 10px 20px;
       border-top: 2px solid var(--accent); justify-content: space-between; align-items: center;
@@ -74,7 +68,7 @@
     #message { flex: 1; }
     #username { width: 80px; text-align: center; border: 1px solid #444; }
 
-    .send-btn { background: var(--bubble-me); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; }
+    .send-btn { background: var(--bubble-me); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; }
 
     @keyframes pop { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   </style>
@@ -83,7 +77,7 @@
 
 <div class="header">
   <span><strong>Friends Chat</strong> 💬</span>
-  <select id="theme" onchange="applyTheme()">
+  <select id="theme" onchange="applyTheme()" style="background:#333; color:white; border-radius:10px; padding:5px;">
     <option value="dark">Dark Mode</option>
     <option value="ocean">Ocean Blue</option>
     <option value="sunset">Sunset Mixed</option>
@@ -99,11 +93,13 @@
 </div>
 
 <div class="input-area">
-  <button id="emoji-trigger" style="background:none; border:none; font-size:1.6rem; cursor:pointer;">😊</button>
+  <button id="emoji-trigger" type="button" style="background:none; border:none; font-size:1.6rem; cursor:pointer;">😊</button>
   <input id="username" placeholder="Name">
   <input id="message" placeholder="Type a message...">
   <button class="send-btn" onclick="sendMessage()">➔</button>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@4.6.4/dist/index.min.js"></script>
 
 <script>
   const socket = io();
@@ -111,15 +107,41 @@
   const usernameInput = document.getElementById('username');
   let currentReply = null;
 
-  // 1. Emoji Picker
-  window.onload = () => {
+  // --- FORCE EMOJI INITIALIZATION ---
+  function initEmoji() {
     const trigger = document.querySelector('#emoji-trigger');
-    const picker = new EmojiButton({ theme: 'dark', position: 'top-start' });
-    picker.on('emoji', selection => { messageInput.value += selection.emoji; messageInput.focus(); });
-    trigger.addEventListener('click', () => picker.togglePicker(trigger));
-  };
+    
+    // Check if library is actually loaded
+    if (typeof EmojiButton !== 'undefined') {
+      const picker = new EmojiButton({
+        theme: 'dark',
+        position: 'top-start',
+        autoHide: false
+      });
 
-  // 2. Typing Logic
+      trigger.addEventListener('click', (e) => {
+        e.preventDefault();
+        picker.togglePicker(trigger);
+      });
+
+      picker.on('emoji', selection => {
+        messageInput.value += selection.emoji;
+        messageInput.focus();
+      });
+      console.log("Emoji Picker Loaded Successfully");
+    } else {
+      console.error("Emoji Library Failed! Check internet or script link.");
+      // Fallback: simple alert if library fails
+      trigger.addEventListener('click', () => {
+        alert("Emoji Library is still loading or blocked by your browser.");
+      });
+    }
+  }
+
+  // Run init when everything is loaded
+  window.addEventListener('load', initEmoji);
+
+  // --- TYPING LOGIC ---
   let isTyping = false;
   let typingTimer;
   messageInput.addEventListener('input', () => {
@@ -128,7 +150,6 @@
     typingTimer = setTimeout(() => { isTyping = false; socket.emit('stop typing'); }, 2000);
   });
 
-  // 3. Send Logic
   function sendMessage() {
     const u = usernameInput.value;
     const m = messageInput.value;
@@ -139,7 +160,6 @@
     }
   }
 
-  // 4. Reply Management
   function setReply(id, user, text) {
     currentReply = { user, text };
     document.getElementById('reply-preview').style.display = 'flex';
@@ -152,10 +172,9 @@
     document.getElementById('reply-preview').style.display = 'none';
   }
 
-  // 5. Options Menu
   function openOptions(id, user, text) {
     const isMe = user === usernameInput.value;
-    const action = prompt("Type 'e' to Edit, 'd' to Delete, 'r' to Reply:");
+    const action = prompt("Type 'e' to Edit (your own), 'd' to Delete (your own), 'r' to Reply:");
     if(action === 'e' && isMe) {
       const newText = prompt("Edit message:", text);
       if(newText) socket.emit("edit message", { id, newText });
@@ -166,7 +185,6 @@
     }
   }
 
-  // 6. Socket Handlers
   socket.on("chat message", (data) => {
     const container = document.getElementById("messages");
     const isMe = data.user === usernameInput.value;
@@ -196,18 +214,27 @@
 
   socket.on("display typing", (name) => { document.getElementById('typing-monitor').innerText = `${name} is typing...`; });
   socket.on("hide typing", () => { document.getElementById('typing-monitor').innerText = ""; });
+  
   socket.on("message edited", (data) => { 
     const el = document.querySelector(`#msg-${data.id} .msg-text`);
     if(el) el.innerHTML = data.text + " <small style='opacity:0.5'>(edited)</small>"; 
   });
+  
   socket.on("message deleted", (id) => { const el = document.getElementById(`msg-${id}`); if(el) el.remove(); });
 
   function applyTheme() {
     const theme = document.getElementById('theme').value;
     const root = document.querySelector(':root');
-    if (theme === 'ocean') { root.style.setProperty('--bg-color', '#001529'); root.style.setProperty('--bubble-me', '#1890ff'); }
-    else if (theme === 'sunset') { root.style.setProperty('--bg-color', '#2d1b33'); root.style.setProperty('--bubble-me', 'linear-gradient(45deg, #ff7e5f, #feb47b)'); }
-    else { root.style.setProperty('--bg-color', '#0b0d11'); root.style.setProperty('--bubble-me', '#0084ff'); }
+    if (theme === 'ocean') { 
+        root.style.setProperty('--bg-color', '#001529'); 
+        root.style.setProperty('--bubble-me', '#1890ff'); 
+    } else if (theme === 'sunset') { 
+        root.style.setProperty('--bg-color', '#2d1b33'); 
+        root.style.setProperty('--bubble-me', 'linear-gradient(45deg, #ff7e5f, #feb47b)'); 
+    } else { 
+        root.style.setProperty('--bg-color', '#0b0d11'); 
+        root.style.setProperty('--bubble-me', '#0084ff'); 
+    }
   }
 
   messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });

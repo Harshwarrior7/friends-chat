@@ -7,198 +7,209 @@
   <script src="/socket.io/socket.io.js"></script>
   <style>
     :root {
-      --bg-color: #0e1525; /* Replit Deep Dark Blue */
-      --modal-bg: #1c2333; /* Replit Modal Blue */
-      --input-bg: #0e1525;
-      --border-color: #3e4451;
+      --bg-dark: #0e1525;
+      --modal-bg: rgba(28, 35, 51, 0.95);
+      --accent: #f97316;
+      --btn-bg: #2d3548;
       --text-main: #f5f9fc;
-      --text-dim: #9ca3af;
-      --accent-orange: #f97316;
-      --btn-hover: #2d3548;
     }
 
     body, html {
       margin: 0; padding: 0; height: 100%;
-      font-family: 'Inter', 'Segoe UI', sans-serif;
-      background-color: var(--bg-color); color: var(--text-main);
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
       overflow: hidden;
     }
 
-    /* --- REPLIT STYLE LOGIN --- */
+    /* --- MOVING BACKGROUND ANIMATION --- */
+    .bg-animation {
+      position: fixed; inset: 0; z-index: -1;
+      background: linear-gradient(45deg, #0e1525, #1c2333, #0e1525);
+      background-size: 400% 400%;
+      animation: gradientBG 15s ease infinite;
+    }
+
+    @keyframes gradientBG {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* Floating "Moving Things" */
+    .floating-blob {
+      position: absolute; width: 300px; height: 300px;
+      background: radial-gradient(circle, rgba(249, 115, 22, 0.15) 0%, rgba(0,0,0,0) 70%);
+      border-radius: 50%;
+      filter: blur(40px);
+      animation: move 20s infinite alternate;
+      z-index: -1;
+    }
+
+    @keyframes move {
+      from { transform: translate(-10%, -10%); }
+      to { transform: translate(100%, 80%); }
+    }
+
+    /* --- LOGIN MODAL --- */
     #login-overlay {
       position: fixed; inset: 0; z-index: 10000;
-      background: rgba(14, 21, 37, 0.98);
       display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(8px);
     }
 
     .login-modal {
       background: var(--modal-bg);
-      width: 100%; max-width: 420px;
+      width: 100%; max-width: 400px;
       padding: 40px;
-      border-radius: 12px;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
       text-align: center;
-      position: relative;
+      animation: modalEntry 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
-    .close-btn {
-      position: absolute; right: 20px; top: 15px;
-      color: var(--text-dim); cursor: pointer; font-size: 20px;
+    @keyframes modalEntry {
+      from { opacity: 0; transform: translateY(30px) scale(0.9); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    .replit-logo { font-size: 32px; margin-bottom: 10px; display: block; }
-    h2 { font-size: 24px; margin-bottom: 30px; font-weight: 600; }
+    h2 { font-size: 26px; margin-bottom: 30px; font-weight: 700; letter-spacing: -0.5px; }
 
-    .social-btn {
-      width: 100%; padding: 12px; margin-bottom: 12px;
-      border-radius: 8px; border: 1px solid var(--border-color);
-      background: transparent; color: white;
-      font-weight: 500; cursor: pointer;
+    .auth-btn {
+      width: 100%; padding: 14px; margin-bottom: 12px;
+      border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
+      background: var(--btn-bg); color: white;
+      font-weight: 600; cursor: pointer;
       display: flex; align-items: center; justify-content: center; gap: 12px;
-      transition: background 0.2s;
+      transition: all 0.3s ease;
+      position: relative; overflow: hidden;
     }
-    .social-btn:hover { background: var(--btn-hover); }
-    .social-btn img { width: 18px; }
 
-    .view-more { color: var(--text-dim); font-size: 14px; margin: 15px 0; cursor: pointer; }
-    .signup-text { font-size: 14px; color: var(--text-dim); margin-bottom: 25px; }
-    .signup-text span { color: var(--accent-orange); cursor: pointer; }
+    /* Shimmer effect on hover */
+    .auth-btn:hover {
+      background: #3e4451;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
 
-    /* Hidden until a button is clicked */
-    #name-entry { display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color); }
+    .auth-btn::after {
+      content: ''; position: absolute; top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+      transform: rotate(45deg); transition: 0.5s;
+    }
+    .auth-btn:hover::after { left: 100%; }
+
+    .guest-btn { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
+
+    #guest-name-area { display: none; margin-top: 20px; animation: fadeIn 0.4s ease; }
     #username-input {
-      width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);
-      background: var(--input-bg); color: white; margin-bottom: 15px; box-sizing: border-box; outline: none;
-    }
-    .join-btn {
-      width: 100%; padding: 12px; background: var(--accent-orange);
-      border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer;
+      width: 100%; padding: 14px; border-radius: 12px; border: 1px solid #3e4451;
+      background: #0e1525; color: white; margin-bottom: 15px; box-sizing: border-box; outline: none;
     }
 
-    .footer-disclaimer {
-      font-size: 11px; color: #6b7280; margin-top: 30px; line-height: 1.6;
+    .join-chat-btn {
+      width: 100%; padding: 14px; background: var(--accent);
+      border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer;
+      transition: transform 0.2s;
     }
-    .footer-disclaimer a { color: var(--text-dim); text-decoration: underline; }
+    .join-chat-btn:active { transform: scale(0.98); }
 
-    /* --- CHAT SECTION --- */
-    #chat-app { display: none; flex-direction: column; height: 100vh; }
-    .header { padding: 15px 20px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; }
-    #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-    .input-area { padding: 20px; background: var(--modal-bg); display: flex; gap: 10px; align-items: center; }
-    #msg-input { flex: 1; background: var(--input-bg); border: 1px solid var(--border-color); color: white; padding: 12px 20px; border-radius: 25px; outline: none; }
+    /* --- CHAT VIEW --- */
+    #chat-container { display: none; flex-direction: column; height: 100vh; }
+    .header { padding: 20px; background: rgba(0,0,0,0.2); border-bottom: 1px solid rgba(255,255,255,0.05); }
+    #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
     
-    .bubble { padding: 10px 15px; border-radius: 18px; max-width: 70%; background: #2f3136; }
+    .bubble { padding: 12px 18px; border-radius: 20px; max-width: 75%; background: #232a3b; }
     .me .bubble { background: #0084ff; align-self: flex-end; }
-    .msg-row { display: flex; width: 100%; margin-bottom: 5px; }
+    .msg-row { display: flex; width: 100%; }
     .msg-row.me { justify-content: flex-end; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   </style>
 </head>
 <body>
 
-<div id="login-overlay">
-  <div class="login-modal">
-    <span class="close-btn">✕</span>
-    <span class="replit-logo">🟠</span>
-    <h2>Log in to Friends Chat</h2>
-    
-    <button class="social-btn" onclick="revealNameInput()">
-      <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg">
-      Continue with Google
-    </button>
-    
-    <button class="social-btn" onclick="revealNameInput()">
-      <span>✉️</span> Continue with Email
-    </button>
+  <div class="bg-animation"></div>
+  <div class="floating-blob" style="top: 10%; left: 10%;"></div>
+  <div class="floating-blob" style="bottom: 10%; right: 10%; background: radial-gradient(circle, rgba(0, 132, 255, 0.1) 0%, transparent 70%);"></div>
 
-    <button class="social-btn" onclick="revealNameInput()">
-      <span>🔑</span> Use SSO log in
-    </button>
+  <div id="login-overlay">
+    <div class="login-modal">
+      <div style="font-size: 40px; margin-bottom: 10px;">⚡</div>
+      <h2>Log in to Friends Chat</h2>
+      
+      <button class="auth-btn" onclick="showInput()">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" width="18">
+        Continue with Google
+      </button>
+      
+      <button class="auth-btn" onclick="showInput()">
+        <span>✉️</span> Continue with Email
+      </button>
 
-    <div class="view-more">View more options</div>
+      <button class="auth-btn guest-btn" onclick="showInput()">
+        <span>✨</span> Enter as Guest
+      </button>
 
-    <div class="signup-text">
-      New to Friends Chat? <span onclick="revealNameInput()">Create account</span>
+      <div id="guest-name-area">
+        <input type="text" id="username-input" placeholder="Enter your display name..." autocomplete="off">
+        <button class="join-chat-btn" onclick="startChat()">Start Chatting</button>
+      </div>
+
+      <p style="font-size: 11px; color: #6b7280; margin-top: 25px;">
+        By continuing, you agree to our <a href="#" style="color: #9ca3af;">Terms</a>.
+      </p>
     </div>
+  </div>
 
-    <div id="name-entry">
-      <input type="text" id="username-input" placeholder="Enter your display name..." autocomplete="off">
-      <button class="join-btn" onclick="finishLogin()">Join Chat</button>
+  <div id="chat-container">
+    <div class="header"><strong>Friends Chat</strong></div>
+    <div id="messages"></div>
+    <div style="padding: 20px; background: #1c2333; display: flex; gap: 10px;">
+      <input id="minput" style="flex:1; background:#0e1525; border:none; color:white; padding:12px; border-radius:10px; outline:none;" placeholder="Type a message...">
+      <button onclick="send()" style="background:#0084ff; color:white; border:none; padding:10px 20px; border-radius:10px; cursor:pointer;">Send</button>
     </div>
-
-    <p class="footer-disclaimer">
-      This site is protected by reCAPTCHA Enterprise and the Google <br>
-      <a href="#">Privacy Policy</a> and <a href="#">Terms of Service</a> apply.
-    </p>
   </div>
-</div>
 
-<div id="chat-app">
-  <div class="header">
-    <strong>Friends Chat 💬</strong>
-    <span id="user-display" style="color:var(--text-dim)"></span>
-  </div>
-  <div id="messages"></div>
-  <div class="input-area">
-    <button id="emoji-trigger" style="background:none; border:none; font-size:20px; cursor:pointer;">😊</button>
-    <input id="msg-input" placeholder="Type a message...">
-    <button onclick="sendMsg()" style="background:#0084ff; color:white; border:none; border-radius:50%; width:40px; height:40px; cursor:pointer;">➔</button>
-  </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@4.6.4/dist/index.min.js"></script>
 <script>
   const socket = io();
-  let user = "";
+  let myName = "";
 
-  function revealNameInput() {
-    document.getElementById('name-entry').style.display = 'block';
+  function showInput() {
+    document.getElementById('guest-name-area').style.display = 'block';
     document.getElementById('username-input').focus();
   }
 
-  function finishLogin() {
-    const name = document.getElementById('username-input').value.trim();
-    if (name) {
-      user = name;
-      document.getElementById('login-overlay').style.display = 'none';
-      document.getElementById('chat-app').style.display = 'flex';
-      document.getElementById('user-display').innerText = "Logged in as: " + user;
-      socket.emit('user joined', user);
-      initEmoji();
+  function startChat() {
+    const n = document.getElementById('username-input').value.trim();
+    if(n) {
+      myName = n;
+      document.getElementById('login-overlay').style.opacity = '0';
+      setTimeout(() => {
+        document.getElementById('login-overlay').style.display = 'none';
+        document.getElementById('chat-container').style.display = 'flex';
+        socket.emit('user joined', myName);
+      }, 300);
     }
   }
 
-  function initEmoji() {
-    const trigger = document.querySelector('#emoji-trigger');
-    const picker = new EmojiButton({ theme: 'dark' });
-    trigger.addEventListener('click', () => picker.togglePicker(trigger));
-    picker.on('emoji', selection => {
-      document.getElementById('msg-input').value += selection.emoji;
-    });
-  }
-
-  function sendMsg() {
-    const val = document.getElementById('msg-input').value;
-    if (val) {
-      socket.emit('chat message', { user, text: val });
-      document.getElementById('msg-input').value = "";
+  function send() {
+    const t = document.getElementById('minput').value;
+    if(t) {
+      socket.emit('chat message', { user: myName, text: t });
+      document.getElementById('minput').value = "";
     }
   }
 
-  socket.on('chat message', (data) => {
-    const isMe = data.user === user;
-    const div = document.createElement('div');
-    div.className = `msg-row ${isMe ? 'me' : 'them'}`;
-    div.innerHTML = `<div class="bubble"><small style="display:block;opacity:0.5">${data.user}</small>${data.text}</div>`;
-    document.getElementById('messages').appendChild(div);
+  socket.on('chat message', (d) => {
+    const isMe = d.user === myName;
+    const m = document.createElement('div');
+    m.className = `msg-row ${isMe ? 'me' : 'them'}`;
+    m.innerHTML = `<div class="bubble"><small style="display:block;opacity:0.5">${d.user}</small>${d.text}</div>`;
+    document.getElementById('messages').appendChild(m);
     document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
-  });
-
-  socket.on('user status', (msg) => {
-    const div = document.createElement('div');
-    div.style = "text-align:center; font-size:12px; color:#555; margin:10px 0;";
-    div.innerText = msg;
-    document.getElementById('messages').appendChild(div);
   });
 </script>
 </body>

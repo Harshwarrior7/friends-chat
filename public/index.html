@@ -15,12 +15,43 @@
       --accent: #5865f2;
     }
 
-    body {
+    body, html {
+      margin: 0; padding: 0; height: 100%;
       font-family: 'Segoe UI', Tahoma, sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-main);
-      margin: 0;
-      display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+      background-color: var(--bg-color); color: var(--text-main);
+      overflow: hidden;
+    }
+
+    /* --- LOGIN SCREEN --- */
+    #login-screen {
+      position: fixed; inset: 0; z-index: 100;
+      background: var(--bg-color);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      transition: opacity 0.5s ease, visibility 0.5s;
+    }
+
+    .login-box {
+      background: #1e1f23; padding: 40px; border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; width: 300px;
+    }
+
+    .login-box h2 { margin-bottom: 20px; font-weight: 300; }
+
+    .login-box input {
+      width: 100%; padding: 12px; margin-bottom: 20px;
+      border-radius: 8px; border: 1px solid #444; background: #2f3136;
+      color: white; outline: none; box-sizing: border-box;
+    }
+
+    .login-box button {
+      width: 100%; padding: 12px; border-radius: 8px; border: none;
+      background: var(--accent); color: white; cursor: pointer; font-weight: bold;
+    }
+
+    /* --- CHAT AREA (Hidden by default) --- */
+    #chat-container {
+      display: none; flex-direction: column; height: 100vh; opacity: 0;
+      transition: opacity 0.5s ease;
     }
 
     .header {
@@ -30,7 +61,7 @@
     }
 
     #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-    .sys-msg { text-align: center; font-size: 0.75rem; color: #888; margin: 5px 0; }
+    .sys-msg { text-align: center; font-size: 0.75rem; color: #888; margin: 10px 0; font-style: italic; }
     #typing-monitor { padding: 0 25px 5px 25px; font-size: 0.8rem; font-style: italic; color: #888; height: 20px; }
 
     .msg-row { display: flex; width: 100%; align-items: flex-end; margin-bottom: 5px; }
@@ -38,23 +69,21 @@
     .msg-row.them { justify-content: flex-start; }
 
     .bubble {
-      padding: 10px 15px; border-radius: 20px; max-width: 70%; position: relative;
+      padding: 10px 15px; border-radius: 20px; max-width: 75%; position: relative;
       box-shadow: 0 2px 5px rgba(0,0,0,0.2); animation: pop 0.25s ease;
     }
 
     .reply-quote {
       background: rgba(0,0,0,0.2); border-left: 3px solid var(--accent);
-      padding: 5px 8px; font-size: 0.75rem; border-radius: 5px; margin-bottom: 5px; opacity: 0.8;
+      padding: 5px 8px; font-size: 0.75rem; border-radius: 5px; margin-bottom: 5px;
     }
 
-    .me .bubble { background: var(--bubble-me); border-bottom-right-radius: 4px; color: white; }
-    .them .bubble { background: var(--bubble-them); border-bottom-left-radius: 4px; color: white; }
+    .me .bubble { background: var(--bubble-me); border-bottom-right-radius: 4px; }
+    .them .bubble { background: var(--bubble-them); border-bottom-left-radius: 4px; }
 
     .user-label { font-size: 0.7rem; font-weight: bold; margin-bottom: 3px; display: block; opacity: 0.7; }
 
-    .options-btn {
-      cursor: pointer; font-size: 1rem; padding: 5px; color: #666; opacity: 0; transition: 0.2s;
-    }
+    .options-btn { cursor: pointer; font-size: 1rem; padding: 5px; color: #666; opacity: 0; transition: 0.2s; }
     .msg-row:hover .options-btn { opacity: 1; }
 
     #reply-preview {
@@ -63,11 +92,7 @@
     }
 
     .input-area { background: #1e1f23; padding: 15px 20px; display: flex; gap: 10px; align-items: center; }
-
-    input { background: #2f3136; border: none; color: white; padding: 12px 18px; border-radius: 25px; outline: none; }
-    #message { flex: 1; }
-    #username { width: 80px; text-align: center; border: 1px solid #444; }
-
+    #message { flex: 1; background: #2f3136; border: none; color: white; padding: 12px 18px; border-radius: 25px; outline: none; }
     .send-btn { background: var(--bubble-me); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; }
 
     @keyframes pop { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -75,28 +100,37 @@
 </head>
 <body>
 
-<div class="header">
-  <span><strong>Friends Chat</strong> 💬</span>
-  <select id="theme" onchange="applyTheme()" style="background:#333; color:white; border-radius:10px; padding:5px;">
-    <option value="dark">Dark Mode</option>
-    <option value="ocean">Ocean Blue</option>
-    <option value="sunset">Sunset Mixed</option>
-  </select>
+<div id="login-screen">
+  <div class="login-box">
+    <h2>Welcome 💬</h2>
+    <input type="text" id="username-input" placeholder="Enter your name..." autocomplete="off">
+    <button onclick="handleLogin()">Join Chat</button>
+  </div>
 </div>
 
-<div id="messages"></div>
-<div id="typing-monitor"></div>
+<div id="chat-container">
+  <div class="header">
+    <span><strong>Friends Chat</strong> 💬</span>
+    <select id="theme" onchange="applyTheme()" style="background:#333; color:white; border-radius:10px; padding:5px;">
+      <option value="dark">Dark Mode</option>
+      <option value="ocean">Ocean Blue</option>
+      <option value="sunset">Sunset Mixed</option>
+    </select>
+  </div>
 
-<div id="reply-preview">
-  <div id="reply-text" style="font-size: 0.8rem; color: #bbb;"></div>
-  <button onclick="cancelReply()" style="background:none; border:none; color:white; cursor:pointer;">✕</button>
-</div>
+  <div id="messages"></div>
+  <div id="typing-monitor"></div>
 
-<div class="input-area">
-  <button id="emoji-trigger" type="button" style="background:none; border:none; font-size:1.6rem; cursor:pointer;">😊</button>
-  <input id="username" placeholder="Name">
-  <input id="message" placeholder="Type a message...">
-  <button class="send-btn" onclick="sendMessage()">➔</button>
+  <div id="reply-preview">
+    <div id="reply-text" style="font-size: 0.8rem; color: #bbb;"></div>
+    <button onclick="cancelReply()" style="background:none; border:none; color:white; cursor:pointer;">✕</button>
+  </div>
+
+  <div class="input-area">
+    <button id="emoji-trigger" type="button" style="background:none; border:none; font-size:1.6rem; cursor:pointer;">😊</button>
+    <input id="message" placeholder="Type a message..." autocomplete="off">
+    <button class="send-btn" onclick="sendMessage()">➔</button>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@4.6.4/dist/index.min.js"></script>
@@ -104,57 +138,64 @@
 <script>
   const socket = io();
   const messageInput = document.getElementById('message');
-  const usernameInput = document.getElementById('username');
+  let currentUser = "";
   let currentReply = null;
+  let picker;
 
-  // --- FORCE EMOJI INITIALIZATION ---
+  // --- LOGIN LOGIC ---
+  function handleLogin() {
+    const name = document.getElementById('username-input').value.trim();
+    if (name) {
+      currentUser = name;
+      document.getElementById('login-screen').style.opacity = '0';
+      setTimeout(() => {
+        document.getElementById('login-screen').style.display = 'none';
+        const chat = document.getElementById('chat-container');
+        chat.style.display = 'flex';
+        setTimeout(() => chat.style.opacity = '1', 50);
+        
+        // Notify server
+        socket.emit('user joined', currentUser);
+        
+        // Setup Emoji Picker AFTER login to ensure it finds the button
+        initEmoji();
+      }, 500);
+    } else {
+      alert("Please enter a name to continue.");
+    }
+  }
+
+  // Allow Enter key on login
+  document.getElementById('username-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') handleLogin();
+  });
+
+  // --- EMOJI PICKER ---
   function initEmoji() {
     const trigger = document.querySelector('#emoji-trigger');
-    
-    // Check if library is actually loaded
     if (typeof EmojiButton !== 'undefined') {
-      const picker = new EmojiButton({
-        theme: 'dark',
-        position: 'top-start',
-        autoHide: false
-      });
-
-      trigger.addEventListener('click', (e) => {
-        e.preventDefault();
-        picker.togglePicker(trigger);
-      });
-
+      picker = new EmojiButton({ theme: 'dark', position: 'top-start' });
+      trigger.addEventListener('click', () => picker.togglePicker(trigger));
       picker.on('emoji', selection => {
         messageInput.value += selection.emoji;
         messageInput.focus();
       });
-      console.log("Emoji Picker Loaded Successfully");
-    } else {
-      console.error("Emoji Library Failed! Check internet or script link.");
-      // Fallback: simple alert if library fails
-      trigger.addEventListener('click', () => {
-        alert("Emoji Library is still loading or blocked by your browser.");
-      });
     }
   }
 
-  // Run init when everything is loaded
-  window.addEventListener('load', initEmoji);
-
-  // --- TYPING LOGIC ---
+  // --- CHAT LOGIC ---
   let isTyping = false;
   let typingTimer;
   messageInput.addEventListener('input', () => {
-    if (!isTyping) { isTyping = true; socket.emit('typing', usernameInput.value || "Someone"); }
+    if (!isTyping) { isTyping = true; socket.emit('typing', currentUser); }
     clearTimeout(typingTimer);
     typingTimer = setTimeout(() => { isTyping = false; socket.emit('stop typing'); }, 2000);
   });
 
   function sendMessage() {
-    const u = usernameInput.value;
-    const m = messageInput.value;
-    if (u && m) {
-      socket.emit("chat message", { user: u, text: m, replyTo: currentReply });
+    const m = messageInput.value.trim();
+    if (currentUser && m) {
+      socket.emit("chat message", { user: currentUser, text: m, replyTo: currentReply });
       messageInput.value = "";
       cancelReply();
     }
@@ -173,8 +214,8 @@
   }
 
   function openOptions(id, user, text) {
-    const isMe = user === usernameInput.value;
-    const action = prompt("Type 'e' to Edit (your own), 'd' to Delete (your own), 'r' to Reply:");
+    const isMe = user === currentUser;
+    const action = prompt("Type: 'e' to Edit, 'd' to Delete, 'r' to Reply");
     if(action === 'e' && isMe) {
       const newText = prompt("Edit message:", text);
       if(newText) socket.emit("edit message", { id, newText });
@@ -187,7 +228,7 @@
 
   socket.on("chat message", (data) => {
     const container = document.getElementById("messages");
-    const isMe = data.user === usernameInput.value;
+    const isMe = data.user === currentUser;
     const row = document.createElement("div");
     row.className = `msg-row ${isMe ? 'me' : 'them'}`;
     row.id = `msg-${data.id}`;
@@ -214,27 +255,18 @@
 
   socket.on("display typing", (name) => { document.getElementById('typing-monitor').innerText = `${name} is typing...`; });
   socket.on("hide typing", () => { document.getElementById('typing-monitor').innerText = ""; });
-  
   socket.on("message edited", (data) => { 
     const el = document.querySelector(`#msg-${data.id} .msg-text`);
     if(el) el.innerHTML = data.text + " <small style='opacity:0.5'>(edited)</small>"; 
   });
-  
   socket.on("message deleted", (id) => { const el = document.getElementById(`msg-${id}`); if(el) el.remove(); });
 
   function applyTheme() {
     const theme = document.getElementById('theme').value;
     const root = document.querySelector(':root');
-    if (theme === 'ocean') { 
-        root.style.setProperty('--bg-color', '#001529'); 
-        root.style.setProperty('--bubble-me', '#1890ff'); 
-    } else if (theme === 'sunset') { 
-        root.style.setProperty('--bg-color', '#2d1b33'); 
-        root.style.setProperty('--bubble-me', 'linear-gradient(45deg, #ff7e5f, #feb47b)'); 
-    } else { 
-        root.style.setProperty('--bg-color', '#0b0d11'); 
-        root.style.setProperty('--bubble-me', '#0084ff'); 
-    }
+    if (theme === 'ocean') { root.style.setProperty('--bg-color', '#001529'); root.style.setProperty('--bubble-me', '#1890ff'); }
+    else if (theme === 'sunset') { root.style.setProperty('--bg-color', '#2d1b33'); root.style.setProperty('--bubble-me', 'linear-gradient(45deg, #ff7e5f, #feb47b)'); }
+    else { root.style.setProperty('--bg-color', '#0b0d11'); root.style.setProperty('--bubble-me', '#0084ff'); }
   }
 
   messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });

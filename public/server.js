@@ -10,19 +10,21 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Memory storage
 let messages = [];
 
 io.on('connection', (socket) => {
-    // Notify everyone when someone joins
-    socket.broadcast.emit('user status', 'A friend joined the chat');
+    
+    // Triggered when a user clicks "Join Chat"
+    socket.on('user joined', (username) => {
+        socket.broadcast.emit('user status', `${username} joined the room`);
+    });
 
     socket.on('chat message', (data) => {
         const msgObject = { 
             id: Date.now() + Math.random().toString(36).substr(2, 5), 
             user: data.user, 
             text: data.text,
-            replyTo: data.replyTo // Store reply info
+            replyTo: data.replyTo 
         };
         messages.push(msgObject);
         io.emit('chat message', msgObject);
@@ -45,7 +47,6 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        socket.broadcast.emit('user status', 'A friend left the chat');
         socket.broadcast.emit('hide typing');
     });
 });

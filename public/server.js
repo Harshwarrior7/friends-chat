@@ -6,7 +6,6 @@ const io = require('socket.io')(http);
 
 app.use(express.static(__dirname));
 
-// Track online users for the "Online" badge in your header
 let onlineUsers = new Set();
 
 app.get('/', (req, res) => {
@@ -16,42 +15,44 @@ app.get('/', (req, res) => {
 io.on('connection', (socket) => {
     let connectedUser = "";
 
-    // 1. Handle User Joining
     socket.on('user joined', (username) => {
         connectedUser = username;
         onlineUsers.add(username);
-        
-        console.log(`User Logged In: ${username}`);
-        
-        // Update everyone on the new online count
         io.emit('update online count', onlineUsers.size);
-        
-        // Notify others with the sparkle animation text
-        socket.broadcast.emit('user status', `${username} joined the room ✨`);
+        socket.broadcast.emit('user status', `${username} joined ✨`);
     });
 
-    // 2. Handle Messages
+    // Handle New Message
     socket.on('chat message', (data) => {
-        // We broadcast to EVERYONE including the sender
+        const msgId = Date.now() + Math.random().toString(36).substr(2, 9);
         io.emit('chat message', {
+            id: msgId,
             user: data.user,
             text: data.text,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            replyTo: data.replyTo // Contains {id, user, text}
         });
     });
 
-    // 3. Handle Disconnect
+    // Handle Edit
+    socket.on('edit message', (data) => {
+        io.emit('message edited', data); // sends {id, text}
+    });
+
+    // Handle Delete
+    socket.on('delete message', (id) => {
+        io.emit('message deleted', id);
+    });
+
     socket.on('disconnect', () => {
         if (connectedUser) {
             onlineUsers.delete(connectedUser);
             io.emit('update online count', onlineUsers.size);
-            socket.broadcast.emit('user status', `${connectedUser} left the chat 🚪`);
-            console.log(`${connectedUser} disconnected`);
+            socket.broadcast.emit('user status', `${connectedUser} left 🚪`);
         }
     });
 });
 
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => {
-    console.log(`🚀 Animated Chat Server running at http://localhost:${PORT}`);
+    console.log(`🚀 Server running at http://localhost:${PORT}`);
 });

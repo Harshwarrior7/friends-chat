@@ -44,7 +44,7 @@
     }
     @keyframes move { from { transform: translate(-10%, -10%); } to { transform: translate(100%, 80%); } }
 
-    /* --- LOGIN INTERFACE (KEPT THE SAME) --- */
+    /* --- LOGIN INTERFACE --- */
     #login-overlay {
       position: fixed; inset: 0; z-index: 10000;
       display: flex; align-items: center; justify-content: center;
@@ -79,7 +79,7 @@
       border-radius: 12px; color: white; font-weight: bold; cursor: pointer;
     }
 
-    /* --- NEW ANIMATED CHAT INTERFACE --- */
+    /* --- CHAT INTERFACE --- */
     #chat-container { display: none; flex-direction: column; height: 100vh; animation: fadeIn 0.5s ease; }
     
     .header { 
@@ -88,6 +88,23 @@
       backdrop-filter: blur(10px);
       border-bottom: 1px solid rgba(255,255,255,0.08);
       display: flex; justify-content: space-between; align-items: center;
+    }
+
+    /* Pulsing Online Dot */
+    #online-count {
+      font-size: 13px; color: #4ade80; font-weight: 600;
+      display: flex; align-items: center; gap: 6px;
+    }
+    #online-count::before {
+      content: ''; display: inline-block; width: 8px; height: 8px;
+      background: #4ade80; border-radius: 50%;
+      box-shadow: 0 0 0 rgba(74, 222, 128, 0.4);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(74, 222, 128, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
     }
 
     #messages { 
@@ -142,7 +159,6 @@
       font-weight: 600; transition: all 0.2s;
     }
     .send-btn:hover { background: #3399ff; transform: scale(1.05); }
-    .send-btn:active { transform: scale(0.95); }
 
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   </style>
@@ -171,7 +187,7 @@
   <div id="chat-container">
     <div class="header">
       <strong>Friends Chat 💬</strong>
-      <div id="online-count" style="font-size: 12px; color: #4ade80;">● Online</div>
+      <div id="online-count">Online</div>
     </div>
     <div id="messages"></div>
     <div class="input-area">
@@ -184,7 +200,6 @@
   const socket = io();
   let myName = "";
   
-  // Helper to generate a consistent color for names
   const stringToColor = (str) => {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -220,12 +235,17 @@
     }
   }
 
+  /* --- SOCKET LISTENERS --- */
+
+  // UPDATED: Online count listener
+  socket.on('update online count', (count) => {
+    document.getElementById('online-count').innerText = `${count} Online`;
+  });
+
   socket.on('chat message', (d) => {
     const isMe = d.user === myName;
     const m = document.createElement('div');
     m.className = `msg-row ${isMe ? 'me' : 'them'}`;
-    
-    // User Color Logic
     const userColor = isMe ? '#fff' : stringToColor(d.user);
     
     m.innerHTML = `
@@ -239,7 +259,13 @@
     msgBox.scrollTop = msgBox.scrollHeight;
   });
 
-  // Enter key support
+  socket.on('user status', (msg) => {
+    const s = document.createElement('div');
+    s.style = "text-align:center; font-size:11px; color:rgba(255,255,255,0.3); margin:10px 0;";
+    s.innerText = msg;
+    document.getElementById('messages').appendChild(s);
+  });
+
   document.getElementById('minput').addEventListener('keypress', (e) => {
     if(e.key === 'Enter') send();
   });
